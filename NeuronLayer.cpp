@@ -84,9 +84,38 @@ void NeuronLayer::computeLearn(long double E, long double a) {
             long double weight_delta = E * grad + (a * grad_moment[neuron_i][weight_i]);
             neurons_weights[neuron_i][weight_i] += weight_delta;
             grad_moment[neuron_i][weight_i] = weight_delta;
-
         }
     }
+}
+
+void NeuronLayer::computeMultiThreadLearn(long double E, long double a) {
+    auto next_layer = this->next_layer.lock().get();
+    int32_t neurons_count = neurons;
+    int32_t weights_count = next_layer->hasOffsetNeuron() ? next_layer->neurons - 1 : next_layer->neurons;
+    std::atomic<int32_t> neuron_i = 0;
+    std::atomic<int32_t> completed_neurons = 0;
+
+    std::mutex neuron_mutex;
+    std::vector<std::thread> threads;
+    for (int i = 0; i < std::thread::hardware_concurrency(); i++) {
+        threads.push_back(std::thread([&, this]() {
+            neuron_mutex.lock();
+            int32_t thread_neuron_i = neuron_i;
+            neuron_i++;
+            neuron_mutex.unlock();
+            long double neuron_value = neurons_values[neuron_i];
+            for (int32_t weight_i = 0; weight_i < weights_count; weight_i++) {
+                long double grad = next_layer->errors_values[weight_i] * neuron_value;
+                long double weight_delta = E * grad + (a * grad_moment[neuron_i][weight_i]);
+                neurons_weights[neuron_i][weight_i] += weight_delta;
+                grad_moment[neuron_i][weight_i] = weight_delta;
+            }
+            completed_neurons++;
+            }));
+    }
+    while (completed_neurons < neurons_count)
+        std::this_thread::yield();
+
 }
 
 std::vector<long double>& NeuronLayer::getErrorArray() {
@@ -105,10 +134,10 @@ void NeuronLayer::getErrorByNextLayer() {
     }
 }
 
-long double NeuronLayer::getAbsoluteError() {
+long double NeuronLayer::getAbsoluteError(long double* array_ptr) {
     long double error = 0;
     for (int32_t neuron_i = 0; neuron_i < neurons; neuron_i++) {
-        error += errors_values[neuron_i];
+        error += pow(array_ptr[neuron_i] - neurons_values[neuron_i], 2);
     }
     error /= neurons;
     return error;
@@ -128,8 +157,9 @@ void NeuronLayer::randomizeWeights(){
     auto next_layer = this->next_layer.lock().get();
     for (int16_t neuron_i = 0; neuron_i < neurons; neuron_i++) {
         for (int16_t weight_i = 0; weight_i < next_layer->neurons; weight_i++) {
-            double f = (double)rand() / RAND_MAX;
-            neurons_weights[neuron_i][weight_i] = f;
+            long double f = (long double)rand() / RAND_MAX;
+            f = f * 0.9 + 0.1;
+            neurons_weights[neuron_i][weight_i] = f / next_layer->neurons;
         }
     }
 }

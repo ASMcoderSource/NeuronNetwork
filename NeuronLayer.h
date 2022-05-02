@@ -1,5 +1,8 @@
 #pragma once
 #include <iostream>
+#include <thread>
+#include <atomic>
+#include <mutex>
 #include <memory>
 #include <string>
 #include <vector>
@@ -29,9 +32,10 @@ public:
     std::vector<long double>& getOutputArray();
     void getErrorByNextLayer();
     void computeLearn(long double E = 0.7, long double a = 0.3);
+    void computeMultiThreadLearn(long double E = 0.7, long double a = 0.3);
     void randomizeWeights();
 
-    long double getAbsoluteError();
+    long double getAbsoluteError(long double* array_ptr);
     static void linkLayers(std::shared_ptr<NeuronLayer>& prew_layer_ptr, std::shared_ptr<NeuronLayer>& next_layer_ptr );
     long double& operator[](int16_t neuron_index);
 

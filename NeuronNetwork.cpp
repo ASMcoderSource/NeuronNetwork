@@ -38,7 +38,7 @@ void NeuronNetwork::computeLearn(long double* ideal_array, long double E, long d
 }
 
 void NeuronNetwork::displayInfo(long double* ideal_array) {
-	std::cout << "Current neuron network error = " << layers.back()->getAbsoluteError() << std::endl;
+	std::cout << "Current neuron network error = " << layers.back()->getAbsoluteError(ideal_array) << std::endl;
 	for (int32_t neuron_i = 0; neuron_i < layers.back()->getNeuronsCount(); neuron_i++) {
 		std::cout << "Neuron [" << neuron_i << "] = " << std::setw(12) << (*layers.back())[neuron_i] << "  - ideal = " << ideal_array[neuron_i] << std::endl;
 	}
